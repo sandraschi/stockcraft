@@ -1,0 +1,6 @@
+/target/
+*.bak
+*.bak.*
+*.db
+*.db-wal
+*.db-shm

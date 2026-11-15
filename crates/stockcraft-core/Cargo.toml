@@ -1,0 +1,18 @@
+[package]
+name = "stockcraft-core"
+description = "stockcraft L1: SQLite WAL inventory store, immutable movement ledger with Storno, moving-average valuation, Inventur, and craft-biz bus."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+craft-biz.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+rusqlite.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

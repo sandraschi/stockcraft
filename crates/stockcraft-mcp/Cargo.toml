@@ -1,0 +1,20 @@
+[package]
+name = "stockcraft-mcp"
+description = "stockcraft L2: single-binary CLI (--json) and MCP stdio server."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "stockcraft"
+path = "src/main.rs"
+
+[dependencies]
+stockcraft-core = { path = "../stockcraft-core" }
+craft-biz.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+
+[lints]
+workspace = true
