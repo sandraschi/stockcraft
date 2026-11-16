@@ -1,5 +1,11 @@
 # StockCraft
 
+## Screenshots, Demo Videos & Walkthroughs
+
+![stockcraft native egui workstation](docs/screenshot.png)
+
+> **Demo Videos & Walkthroughs:** Under construction.
+
 ![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)
 ![Rust 1.90+](https://img.shields.io/badge/rust-1.90%2B-orange?logo=rust)
 ![MCP stdio](https://img.shields.io/badge/MCP-stdio-purple)
