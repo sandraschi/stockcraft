@@ -145,6 +145,18 @@ enum Cmd {
         #[arg(long)]
         emit_bus: bool,
     },
+    /// USB-HID barcode/EAN or SKU scan: lookup, receive, or issue by code.
+    Scan {
+        code: String,
+        #[arg(long, default_value = "lookup")]
+        action: String,
+        #[arg(long, default_value_t = 1)]
+        qty: i64,
+        #[arg(long)]
+        cost_cents: Option<i64>,
+        #[arg(long, default_value = "SCAN")]
+        reference: String,
+    },
     /// Print the MCP tool catalog (JSON, or markdown for docs/TOOLS.md).
     Tools {
         #[arg(long)]
@@ -338,6 +350,19 @@ fn main() -> ExitCode {
             reason,
         },
         Cmd::ReorderPlan { emit_bus } => Command::ReorderPlan { emit_bus },
+        Cmd::Scan {
+            code,
+            action,
+            qty,
+            cost_cents,
+            reference,
+        } => Command::Scan {
+            code,
+            action,
+            qty,
+            unit_cost_cents: cost_cents,
+            reference,
+        },
         Cmd::Tools { .. } | Cmd::Mcp => unreachable!(),
     };
 

@@ -30,3 +30,4 @@ is out of date. Every tool is also a CLI verb (`stockcraft --help`). Dotted name
 | `stock_expiring_lots` | List active lots expiring within N days (MHD alert). | - | `within_days` |
 | `stock_writedown` | Niederstwertprinzip: write down unit cost to a lower market value and emit adjustment. | `sku`, `new_cost_cents` | `reason` |
 | `stock_reorder_plan` | Generate reorder suggestions for all SKUs at or below Meldebestand. | - | `emit_bus` |
+| `stock_scan` | USB-HID barcode/EAN or SKU scan: lookup, receive, or issue by code. | `code` | `action`, `qty`, `reference`, `unit_cost_cents` |

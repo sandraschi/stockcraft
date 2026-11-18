@@ -36,6 +36,8 @@ struct StockApp {
     inventur_inputs: HashMap<String, String>,
     total_valuation_cents: i64,
     selected_sku: Option<String>,
+    scan_code: String,
+    scan_action: String,
 }
 
 impl StockApp {
@@ -59,6 +61,8 @@ impl StockApp {
             inventur_inputs: HashMap::new(),
             total_valuation_cents: 0,
             selected_sku: None,
+            scan_code: String::new(),
+            scan_action: "lookup".into(),
         };
         app.reload()?;
         Ok(app)
@@ -398,6 +402,37 @@ impl StockApp {
         ];
         widgets::kpi_row(ui, &kpis);
         ui.add_space(10.0);
+
+        widgets::card(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(f.t("Scanner (EAN/SKU):", "Barcode / EAN:")).strong());
+                let resp = ui.add(
+                    egui::TextEdit::singleline(&mut self.scan_code)
+                        .hint_text(f.t("Barcode scannen + Enter...", "Scan barcode + Enter..."))
+                        .desired_width(220.0),
+                );
+                for (id, label) in [
+                    ("lookup", f.t("Suchen", "Lookup")),
+                    ("receive", f.t("+1 Eingang", "+1 Receive")),
+                    ("issue", f.t("-1 Ausgang", "-1 Issue")),
+                ] {
+                    ui.selectable_value(&mut self.scan_action, id.to_string(), label);
+                }
+                let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                if (enter || ui.button(f.t("Ausführen", "Scan")).clicked())
+                    && !self.scan_code.trim().is_empty()
+                {
+                    let code = self.scan_code.trim().to_string();
+                    f.run(
+                        format!("Scan {code}"),
+                        "stock_scan",
+                        json!({ "code": code, "action": self.scan_action, "qty": 1 }),
+                    );
+                    self.scan_code.clear();
+                }
+            });
+        });
+        ui.add_space(8.0);
 
         if self.items.is_empty() {
             widgets::empty_state(
@@ -895,6 +930,7 @@ mod tests {
         ),
         ("stock_writedown", "Stock > Write-down (Niederstwert)..."),
         ("stock_reorder_plan", "Low Stock view Reorder plan button"),
+        ("stock_scan", "Inventory view USB-HID Barcode/EAN Scan bar"),
     ];
 
     #[test]
