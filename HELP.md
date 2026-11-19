@@ -158,7 +158,18 @@ Use **Lots & MHD** when tracking batch numbers (*Chargen*) or best-before dates 
 
 ---
 
-## 9. Troubleshooting
+## 9. USB-HID Barcode Scanner Wedge (`stock_scan`)
+
+Any USB-HID barcode scanner (which types the EAN/SKU followed by `Enter`) works directly in **Inventory > Barcode / EAN**:
+- Select **Lookup**, **+1 Receive**, or **-1 Issue**, place focus in the scan box, and scan.
+- **CLI**:
+  ```powershell
+  stockcraft scan 4001234567890 --action issue --qty 1 --reference POS-SCAN
+  ```
+
+---
+
+## 10. Troubleshooting
 
 - **`insufficient stock for SKU`**: You cannot issue more units than `qty_on_hand`. Receive stock first or check open pick lists.
 - **`movements are immutable; use storno`**: Direct SQL `UPDATE`/`DELETE` on `movements` is blocked by triggers. Always use `storno`.
