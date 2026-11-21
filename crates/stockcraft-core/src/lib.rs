@@ -304,6 +304,36 @@ impl Store {
             .ok_or_else(|| StockError::NotFound(format!("sku '{sku}'")))
     }
 
+    pub fn find_by_code(&self, code: &str) -> Result<Item> {
+        let trimmed = code.trim();
+        if trimmed.is_empty() {
+            return Err(StockError::Invalid(
+                "barcode/sku code must not be empty".into(),
+            ));
+        }
+        self.conn
+            .query_row(
+                "SELECT sku, name, ean, unit, location, min_stock, qty_on_hand, unit_cost_cents, ekr_account
+                 FROM items WHERE sku = ?1 OR (ean != '' AND ean = ?1) LIMIT 1",
+                params![trimmed],
+                |r| {
+                    Ok(Item {
+                        sku: r.get(0)?,
+                        name: r.get(1)?,
+                        ean: r.get(2)?,
+                        unit: r.get(3)?,
+                        location: r.get(4)?,
+                        min_stock: r.get(5)?,
+                        qty_on_hand: r.get(6)?,
+                        unit_cost_cents: r.get(7)?,
+                        ekr_account: r.get(8)?,
+                    })
+                },
+            )
+            .optional()?
+            .ok_or_else(|| StockError::NotFound(format!("code '{trimmed}'")))
+    }
+
     pub fn list_items(&self) -> Result<Vec<Item>> {
         let mut stmt = self.conn.prepare(
             "SELECT sku, name, ean, unit, location, min_stock, qty_on_hand, unit_cost_cents, ekr_account
@@ -1237,6 +1267,13 @@ pub enum Command {
     ReorderPlan {
         emit_bus: bool,
     },
+    Scan {
+        code: String,
+        action: String,
+        qty: i64,
+        unit_cost_cents: Option<i64>,
+        reference: String,
+    },
 }
 
 fn req_str(args: &Value, key: &str) -> Result<String> {
@@ -1368,6 +1405,13 @@ impl Command {
                     .get("emit_bus")
                     .and_then(Value::as_bool)
                     .unwrap_or(false),
+            }),
+            "stock_scan" => Ok(Self::Scan {
+                code: req_str(args, "code")?,
+                action: opt_str(args, "action", "lookup"),
+                qty: args.get("qty").and_then(Value::as_i64).unwrap_or(1),
+                unit_cost_cents: args.get("unit_cost_cents").and_then(Value::as_i64),
+                reference: opt_str(args, "reference", "SCAN"),
             }),
             other => Err(StockError::Invalid(format!("unknown tool '{other}'"))),
         }
@@ -1608,6 +1652,35 @@ pub fn dispatch(ctx: &Ctx<'_>, cmd: Command) -> Result<Value> {
                 "reorder_items": plan,
                 "total_estimated_cents": total_estimated_cents,
             }))
+        }
+        Command::Scan {
+            code,
+            action,
+            qty,
+            unit_cost_cents,
+            reference,
+        } => {
+            let item = ctx.store.find_by_code(&code)?;
+            match action.trim().to_ascii_lowercase().as_str() {
+                "lookup" => Ok(json!({ "item": item })),
+                "receive" => {
+                    let cost = unit_cost_cents.unwrap_or(item.unit_cost_cents);
+                    let mv = ctx.store.receive(&item.sku, qty, cost, &reference)?;
+                    let updated = ctx.store.get_item(&item.sku)?;
+                    Ok(json!({ "movement": mv, "item": updated }))
+                }
+                "issue" => dispatch(
+                    ctx,
+                    Command::Issue {
+                        sku: item.sku,
+                        qty,
+                        reference,
+                    },
+                ),
+                other => Err(StockError::Invalid(format!(
+                    "scan action '{other}' must be lookup, receive, or issue"
+                ))),
+            }
         }
     }
 }
@@ -1898,6 +1971,18 @@ pub fn tools() -> Vec<Value> {
             json!({ "emit_bus": { "type": "boolean" } }),
             &[],
         ),
+        tool(
+            "stock_scan",
+            "USB-HID barcode/EAN or SKU scan: lookup, receive, or issue by code.",
+            json!({
+                "code": { "type": "string" },
+                "action": { "type": "string", "enum": ["lookup", "receive", "issue"] },
+                "qty": { "type": "integer" },
+                "unit_cost_cents": { "type": "integer" },
+                "reference": { "type": "string" }
+            }),
+            &["code"],
+        ),
     ]
 }
 
@@ -2059,6 +2144,24 @@ mod tests {
         let plan = store.reorder_plan()?;
         assert_eq!(plan.len(), 1);
         assert_eq!(plan[0].suggested_qty, 5);
+
+        let found = store.find_by_code("4001")?;
+        assert_eq!(found.sku, "PASTE-01");
+        let ctx = Ctx {
+            store: &store,
+            bus: None,
+        };
+        let scanned = dispatch(
+            &ctx,
+            Command::Scan {
+                code: "4001".into(),
+                action: "issue".into(),
+                qty: 1,
+                unit_cost_cents: None,
+                reference: "USB-SCAN".into(),
+            },
+        )?;
+        assert_eq!(scanned["item"]["qty_on_hand"], 4);
         Ok(())
     }
 }
